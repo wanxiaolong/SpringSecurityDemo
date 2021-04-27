@@ -12,11 +12,6 @@ public class UserController {
         return "index";
     }
 
-    @RequestMapping(value = "/register")
-    public String regist(){
-        return "register";
-    }
-
     @RequestMapping("/home")
     public String home(){
         return "home";

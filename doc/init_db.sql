@@ -2,7 +2,7 @@
 create database if not exists security;
 use security;
 #建表
-drop table user;
+drop table if exists user;
 create table user (
   id int auto_increment primary key,
   username varchar(20) not null,

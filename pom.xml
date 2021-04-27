@@ -52,6 +52,7 @@
 
     <build>
         <plugins>
+            <!-- See https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/htmlsingle/ -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

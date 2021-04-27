@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>登录页</title>
+    <style>
+        .row {margin: 5px 5px 5px 0px;}
+    </style>
+</head>
+<body>
+    <h3>登录页</h3>
+    <div th:if="${param.error}" style="color:red">用户名或密码错误</div>
+    <div th:if="${param.logout}">你已经退出登录</div>
+    <form th:action="@{/login}" method="post">
+        <div class="row">
+            <input type="text" name="username" placeholder="用户名"/>
+        </div>
+        <div class="row">
+            <input type="password" name="password" placeholder="密码"/>
+        </div>
+        <div class="row">
+            <input id="remember-me" name="remember-me" type="checkbox"/>
+            <label for="remember-me" class="inline">记住我</label>
+        </div>
+        <input type="submit" value="登录"/>
+    </form>
+</body>
+</html>

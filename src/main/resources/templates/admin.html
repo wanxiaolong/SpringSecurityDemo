@@ -1,0 +1,17 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity4">
+<head>
+    <title>管理页</title>
+</head>
+<body>
+    <h3>管理页</h3>
+    <div sec:authorize="isAuthenticated()">
+        Hello <span sec:authentication="name" >someone</span>
+        这里是你的个人主页，有ADMIN权限的才能看到。<br />
+        <form th:action="@{/logout}" method="POST">
+            <button type="submit" value="退出登录">退出登录</button>
+        </form>
+    </div>
+</body>
+</html>

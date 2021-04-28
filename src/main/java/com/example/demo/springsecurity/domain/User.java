@@ -19,6 +19,12 @@ public class User {
 
     private String role;
 
+    private String authority;
+
+    public String getAuthority() {
+        return authority;
+    }
+
     public Integer getId() {
         return id;
     }
@@ -57,5 +63,9 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public void setAuthority(String authority) {
+        this.authority = authority;
     }
 }

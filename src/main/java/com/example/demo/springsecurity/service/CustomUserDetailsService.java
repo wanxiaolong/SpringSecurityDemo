@@ -22,7 +22,8 @@ import java.util.List;
 @Service("userDetailsService")
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private GrantedAuthority DEFAULT_ROLE = new SimpleGrantedAuthority("USER");
+    private String DEFAULT_AUTHORITY = "USER";
+    private String DEFAULT_ROLE = "USER";
 
     @Autowired
     private UserRepository userRepository;
@@ -37,21 +38,43 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("User " + username + " not found");
         }
 
-        List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
+        //角色role
         String dbRole = userInDB.getRole();
-        if (!StringUtils.hasLength(dbRole)){
-            //默认的用户角色
-            grantedAuthorities.add(DEFAULT_ROLE);
+        String[] roles = null;
+        if (!StringUtils.hasLength(dbRole)) {
+            roles = new String[]{DEFAULT_ROLE};
         } else {
-            String [] roles = dbRole.split(",");
-            for (String r : roles){
-                //从数据库中查询到的用户角色，用每个角色创建一个SimpleGrantedAuthority对象。
-                GrantedAuthority grantedAuthority = new SimpleGrantedAuthority(r);
+            //角色在DB中以逗号隔开
+            roles = dbRole.split(",");
+        }
+
+        //权限authority
+        List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
+        String dbAuthority = userInDB.getAuthority();
+        if (!StringUtils.hasLength(dbAuthority)){
+            //默认的用户权限
+            grantedAuthorities.add(new SimpleGrantedAuthority(DEFAULT_AUTHORITY));
+        } else {
+            //权限在DB中以逗号隔开
+            String [] authorities = dbAuthority.split(",");
+            for (String authority : authorities){
+                //用每个权限创建一个SimpleGrantedAuthority对象。
+                GrantedAuthority grantedAuthority = new SimpleGrantedAuthority(authority);
                 grantedAuthorities.add(grantedAuthority);
             }
         }
 
-        return new org.springframework.security.core.userdetails.User(
-                username, userInDB.getPassword(), grantedAuthorities);
+        //用User.builder.roles()方法，其实是用每个role，加上前缀"ROLE_"后，再生成一个Authority对象
+        //其作用和User.builder.authorities()是一样的，最后都是生成权限对象，只是用role转成的权限多了个前缀"ROLE_"。
+        //参看roles()方法的源码
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(username)
+                .password(userInDB.getPassword())
+                //使用roles来认证，需要在SecurityConfig中以.hasAnyRole()或者.hasRole()来设置角色
+                //注意：role转换成Authority的时候，role不能以"ROLE_"开头，因为这个前缀会被自动添加。请参看roles()的源码。
+                //.roles(roles)
+                //使用authorities来认证，需要在SecurityConfig中以.hasAnyAuthority或者.hasAuthority()来设置权限
+                .authorities(grantedAuthorities)
+                .build();
     }
 }

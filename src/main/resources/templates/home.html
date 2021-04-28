@@ -9,6 +9,12 @@
     <div sec:authorize="isAuthenticated()">
         Hello <span sec:authentication="name" >someone</span>
         这里是你的个人主页，有USER权限的才能看到。<br />
+
+        <!-- 在页面中校验用户权限 -->
+        <div sec:authorize="hasRole('ROLE_ADMIN')">
+            这是只有ADMIN才能看到的内容
+        </div>
+
         <form th:action="@{/logout}" method="POST">
             <button type="submit" value="退出登录">退出登录</button>
         </form>

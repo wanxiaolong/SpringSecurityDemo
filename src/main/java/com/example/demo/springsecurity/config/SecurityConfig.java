@@ -44,11 +44,15 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         //1.使用配置在内存中的用户进行认证
         auth.inMemoryAuthentication()
                 //普通用户：用户名为spring，密码为1，角色为USER.
-                //注意这里的password参数前面有个{noop}表示选择的加密算法是NoOpPasswordEncoder，即不对密码加密
-                .withUser("spring").password("1").authorities("USER")
+                .withUser("spring").password("1")
+                //.authorities("USER")
+                .roles("USER")
                 .and()
                 //管理员：用户名为admin，密码为1，角色为ADMIN+USER
-                .withUser("admin").password("1").authorities("ADMIN");
+                .withUser("admin").password("1")
+                //.authorities("ADMIN")
+                .roles("ADMIN")
+        ;
 
 
         //2.基于数据库的用户认证
@@ -60,21 +64,22 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 //                //这两个语句在JdbcDaoImpl中都有默认的语句，但是如果表或字段跟默认的不同，就需要自定义这两个查询语句。
 //
 //                //usersByUsernameQuery用于通过用户名查询用户
-//                //JdbcUserDetailsManager.loadUsersByUsername()会取出这个查询并执行，
+//                //JdbcUserDetailsManager.loadUsersByUsername()会取出这个查询并执行（可以debug）
 //                //然后通过mapToUser()将查询结果方法转换成一个UserDetails对象
 //                //这里查询的字段要和mapToUser()里的顺序一致，列数量要一致，且列的数据类型要兼容
 //                .usersByUsernameQuery("select username, password, enabled from user where username=?")
 //
 //                //authoritiesByUsernameQuery是用于通过用户名查询改用户的角色的
-//                //JdbcDaoImpl.loadUserAuthorities()会执行这个语句，并把结果集的第2列取出来作为该用户的ROLE
+//                //JdbcDaoImpl.loadUserAuthorities()会执行这个语句，并把结果集的第2列取出来作为该用户的ROLE（可以debug）
 //                //同样，这里的查询字段的顺序、数量、数据类型要一致
 //                //这个过程和我们自定义的认证方式时，在CustomUserDetailsService中的实现差不多，都是用DB中取到的ROLE
 //                //来封装一个Authority对象：new SimpleGrantedAuthority(roleName);
-//                .authoritiesByUsernameQuery("select username, role from user where username=?");
+//                .authoritiesByUsernameQuery("select username, authority from user where username=?")
+        ;
 
 
         //3.自定义的用户认证，需要实现UserDetailsService接口
-        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
+//        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
     }
 
     @Bean
@@ -89,15 +94,25 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 //认证的登录页面/login，和认证成功的页面/loginSuccess
                 .formLogin().loginPage("/login").successForwardUrl("/loginSuccess")
                 .and()
-                .logout().logoutUrl("/logout").logoutSuccessUrl("/index")
+                .logout().logoutUrl("/logout").logoutSuccessUrl("/login")
                 .and()
-                .rememberMe().key("rememberMeKey").tokenValiditySeconds(2419200)
+                .rememberMe().key("rememberMeKey").tokenValiditySeconds(2419200)//单位是秒
                 .and()
                 .authorizeRequests()
-                    //对这两个页面需要授权
-                    .antMatchers("/home", "/loginSuccess").hasAuthority("USER")
-                    .antMatchers("/admin", "/loginSuccess").hasAuthority("ADMIN")
-                    //其余的页面不需要授权
-                    .anyRequest().permitAll();
+                //对这两个页面需要授权。有两种匹配策略：按角色Role和按权限Authority
+                //(1). 按Authority授权。Authority代表的是"权限"，配置用户的时候，需要对用户授权。
+                //以hasAuthority()或者hasAnyAuthority()的方式来判断用户是否有该权限
+                //如果使用的是JDBC认证方式，则需要在CustomerUserDetailsService中对User设置.authorities()设置用户拥有的权限
+                //比如：内存用户中是这么配置的：.withUser("spring").password("1").authorities("USER")
+//                    .antMatchers("/home", "/loginSuccess").hasAnyAuthority("USER","ADMIN")//ADMIN和USER都可以访问
+//                    .antMatchers("/admin", "/loginSuccess").hasAuthority("ADMIN")//只有ADMIN可以访问
+
+                //(2). 按Role授权。Role代表的是"角色"，配置用户的时候，需要对用户设置角色。
+                //以hasRole()或者hasAnyRole()的方式来判断用户是否具有该角色，
+                //如果使用的是JDBC认证方式，则需要在CustomerUserDetailsService中对User设置.roles()设置用户拥有的角色
+                .antMatchers("/home", "/loginSuccess").hasAnyRole("USER","ADMIN")
+                .antMatchers("/admin", "/loginSuccess").hasRole("ADMIN")
+                //其余的页面不需要授权
+                .anyRequest().permitAll();
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -41,15 +42,21 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
      */
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        //使用BCryptPasswordEncoder来对密码加密
+        BCryptPasswordEncoder bcryptEncoder = new BCryptPasswordEncoder();
         //1.使用配置在内存中的用户进行认证
         auth.inMemoryAuthentication()
+                .passwordEncoder(bcryptEncoder)
                 //普通用户：用户名为spring，密码为1，角色为USER.
-                .withUser("spring").password("1")
+                .withUser("spring")
+                //在设置密码的时候，需要先用encoder加密
+                .password(bcryptEncoder.encode("1"))
                 //.authorities("USER")
                 .roles("USER")
                 .and()
                 //管理员：用户名为admin，密码为1，角色为ADMIN+USER
-                .withUser("admin").password("1")
+                .withUser("admin")
+                .password(bcryptEncoder.encode("1"))
                 //.authorities("ADMIN")
                 .roles("ADMIN")
         ;

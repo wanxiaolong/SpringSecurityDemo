@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
@@ -43,23 +44,23 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(AuthenticationManagerBuilder auth) throws Exception {
         //使用BCryptPasswordEncoder来对密码加密
-        BCryptPasswordEncoder bcryptEncoder = new BCryptPasswordEncoder();
-        //1.使用配置在内存中的用户进行认证
-        auth.inMemoryAuthentication()
-                .passwordEncoder(bcryptEncoder)
-                //普通用户：用户名为spring，密码为1，角色为USER.
-                .withUser("spring")
-                //在设置密码的时候，需要先用encoder加密
-                .password(bcryptEncoder.encode("1"))
-                //.authorities("USER")
-                .roles("USER")
-                .and()
-                //管理员：用户名为admin，密码为1，角色为ADMIN+USER
-                .withUser("admin")
-                .password(bcryptEncoder.encode("1"))
-                //.authorities("ADMIN")
-                .roles("ADMIN")
-        ;
+//        BCryptPasswordEncoder bcryptEncoder = new BCryptPasswordEncoder();
+//        //1.使用配置在内存中的用户进行认证
+//        auth.inMemoryAuthentication()
+//                .passwordEncoder(bcryptEncoder)
+//                //普通用户：用户名为spring，密码为1，角色为USER.
+//                .withUser("spring")
+//                //在设置密码的时候，需要先用encoder加密
+//                .password(bcryptEncoder.encode("1"))
+//                //.authorities("USER")
+//                .roles("USER")
+//                .and()
+//                //管理员：用户名为admin，密码为1，角色为ADMIN+USER
+//                .withUser("admin")
+//                .password(bcryptEncoder.encode("1"))
+//                //.authorities("ADMIN")
+//                .roles("ADMIN")
+//        ;
 
 
         //2.基于数据库的用户认证
@@ -81,29 +82,51 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 //                //同样，这里的查询字段的顺序、数量、数据类型要一致
 //                //这个过程和我们自定义的认证方式时，在CustomUserDetailsService中的实现差不多，都是用DB中取到的ROLE
 //                //来封装一个Authority对象：new SimpleGrantedAuthority(roleName);
-//                .authoritiesByUsernameQuery("select username, authority from user where username=?")
-        ;
+//                .authoritiesByUsernameQuery(
+//                        "select distinct u.username, p.code from user u " +
+//                        "join user_role ur on ur.user_id = u.id " +
+//                        "join role r on r.id = ur.role_id " +
+//                        "join role_permission rp on rp.role_id = r.id " +
+//                        "join permission p on p.id = rp.permission_id " +
+//                        "where u.username = ?")
+//        ;
 
 
         //3.自定义的用户认证，需要实现UserDetailsService接口
-//        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
+        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         //为了演示方便，我们使用NoOpPasswordEncoder（这个就是不加密）
         return NoOpPasswordEncoder.getInstance();
+        //实际开发使用这个
+        //return new BCryptPasswordEncoder();
     }
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
+                //为了防止csrf的发生，SpringSecurity会禁止除了GET以外的大多数HTTP方法。
+                //因此为了启用其他方法，可以关闭SpringSecurity的csrf控制功能
+                .csrf().disable()
                 //认证的登录页面/login，和认证成功的页面/loginSuccess
                 .formLogin().loginPage("/login").successForwardUrl("/loginSuccess")
                 .and()
+                //登出页面/logout，以及登出成功的页面/login。这里也可以使用.logoutSuccessHandler()
+                //或者.addLogoutHandler()来指定自定义的处理器，以执行一些登出时的处理操作
                 .logout().logoutUrl("/logout").logoutSuccessUrl("/login")
                 .and()
                 .rememberMe().key("rememberMeKey").tokenValiditySeconds(2419200)//单位是秒
+                .and()
+                //session管理策略，有4种
+                // - ALWAYS: 没有session，SpringSecurity就创建一个
+                // - IF_REQUIRED: 如果需要就创建一个session（默认）
+                // - NEVER: SpringSecurity不会创建session，但如果应用中其他地方创建了session，SpringSecurity将会使用它
+                // - STATELESS: SpringSecurity不会创建session，也不会使用session
+                //              在REST API中可以使用它，因为REST API是通过token来保持会话的
+                .sessionManagement()
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .and()
                 .authorizeRequests()
                 //对这两个页面需要授权。有两种匹配策略：按角色Role和按权限Authority
@@ -111,14 +134,14 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 //以hasAuthority()或者hasAnyAuthority()的方式来判断用户是否有该权限
                 //如果使用的是JDBC认证方式，则需要在CustomerUserDetailsService中对User设置.authorities()设置用户拥有的权限
                 //比如：内存用户中是这么配置的：.withUser("spring").password("1").authorities("USER")
-//                    .antMatchers("/home", "/loginSuccess").hasAnyAuthority("USER","ADMIN")//ADMIN和USER都可以访问
-//                    .antMatchers("/admin", "/loginSuccess").hasAuthority("ADMIN")//只有ADMIN可以访问
+                    .antMatchers("/home", "/loginSuccess").hasAnyAuthority("p1","p2")//ADMIN和USER都可以访问
+                    .antMatchers("/admin").hasAuthority("p2")//只有ADMIN可以访问
 
                 //(2). 按Role授权。Role代表的是"角色"，配置用户的时候，需要对用户设置角色。
                 //以hasRole()或者hasAnyRole()的方式来判断用户是否具有该角色，
                 //如果使用的是JDBC认证方式，则需要在CustomerUserDetailsService中对User设置.roles()设置用户拥有的角色
-                .antMatchers("/home", "/loginSuccess").hasAnyRole("USER","ADMIN")
-                .antMatchers("/admin", "/loginSuccess").hasRole("ADMIN")
+//                .antMatchers("/home", "/loginSuccess").hasAnyRole("USER","ADMIN")
+//                .antMatchers("/admin").hasRole("ADMIN")
                 //其余的页面不需要授权
                 .anyRequest().permitAll();
     }

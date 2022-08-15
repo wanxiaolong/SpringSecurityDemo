@@ -9,10 +9,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 自定义认证方案是，这个Bean会被注入到SecurityConfig中，
@@ -21,9 +22,6 @@ import java.util.List;
  */
 @Service("userDetailsService")
 public class CustomUserDetailsService implements UserDetailsService {
-
-    private String DEFAULT_AUTHORITY = "USER";
-    private String DEFAULT_ROLE = "USER";
 
     @Autowired
     private UserRepository userRepository;
@@ -38,30 +36,15 @@ public class CustomUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("User " + username + " not found");
         }
 
-        //角色role
-        String dbRole = userInDB.getRole();
-        String[] roles = null;
-        if (!StringUtils.hasLength(dbRole)) {
-            roles = new String[]{DEFAULT_ROLE};
-        } else {
-            //角色在DB中以逗号隔开
-            roles = dbRole.split(",");
-        }
+        //查找用户的所有权限
+        List<String> authorities = userRepository.findAuthoritiesBy(username);
 
         //权限authority
         List<GrantedAuthority> grantedAuthorities = new ArrayList<>();
-        String dbAuthority = userInDB.getAuthority();
-        if (!StringUtils.hasLength(dbAuthority)){
-            //默认的用户权限
-            grantedAuthorities.add(new SimpleGrantedAuthority(DEFAULT_AUTHORITY));
-        } else {
-            //权限在DB中以逗号隔开
-            String [] authorities = dbAuthority.split(",");
-            for (String authority : authorities){
-                //用每个权限创建一个SimpleGrantedAuthority对象。
-                GrantedAuthority grantedAuthority = new SimpleGrantedAuthority(authority);
-                grantedAuthorities.add(grantedAuthority);
-            }
+        if (!CollectionUtils.isEmpty(authorities)) {
+            grantedAuthorities = authorities.stream()
+                    .map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toList());
         }
 
         //用User.builder.roles()方法，其实是用每个role，加上前缀"ROLE_"后，再生成一个Authority对象
